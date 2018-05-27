@@ -5,6 +5,20 @@ include_once __DIR__.'/config/Dev.php';
 use \Configs\Dev;
 use \Bundles\Config;
 
+$yes = new PDO("pgsql:host=localhost;dbname=postgres", 'root', 'admin'//,
+    //[PDO::ATTR_PERSISTENT => true]
+);
+
+$query = $yes->query("
+              SELECT table_catalog 
+              FROM information_schema.tables 
+              WHERE table_schema = 'public' AND table_name = 'task_pull'"
+);
+$query->execute();
+
+$res = $query->fetch(\PDO::FETCH_ASSOC);
+
+echo"<pre>";var_dump($res);exit();
 Config::setEvironment(new Dev());
 $get = Config::get('testStorage');
 
@@ -21,7 +35,7 @@ $process = proc_open("php worker.php --deleteFile '/var/www/html/test/test/2.txt
 
 $error = stream_get_contents($pipes[2]);
 
-echo"<pre>";var_dump($error);exit();
+
 
 foreach ($pipes as $pipe) {
     if (is_resource($pipe)) {

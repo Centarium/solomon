@@ -31,14 +31,24 @@ class TaskProcessing extends Task
 
     const LOG_PATH = 'logs';
 
-    public function taskProcessing($taskID)
+    public function __construct($taskID, $params)
+    {
+        parent::__construct($params);
+        $this->taskID = $taskID;
+        $this->total_processes = Config::get('task:total_proc');
+    }
+
+    public function taskProcessing()
     {
         try{
-            $this->total_processes = Config::get('task:total_proc');
-            $this->taskID = $taskID;
+            $handleError = $this->createTaskLogErrorFile();
+            $handleSuccess = $this->createTaskLogSuccessFile();
+            fclose($handleSuccess);
 
-            $handleSuccess = $this->createTaskLogErrorFile();
-            $handleError = $this->createTaskLogSuccessFile();
+            if( count($this->errors) != 0 )
+            {
+                throw new Exception(print_r($this->errors, true), Task::ERROR_PROCESSING);
+            }
 
             $this->isFilename();
             $this->isExtension();
@@ -53,11 +63,11 @@ class TaskProcessing extends Task
             if($handleError)
             {
                 fwrite($handleError, $e->getMessage() );
+                fclose($handleError);
             }
         }
 
-        $this->createCommonLog($handleError,$handleSuccess);
-        $this->onAfterProcessing($taskID);
+        $this->onAfterProcessing();
     }
 
     /**
@@ -66,7 +76,7 @@ class TaskProcessing extends Task
      * @param resource $taskErrorHandle
      * @param resource $taskSuccessHandle
      */
-    protected function createCommonLog($taskErrorHandle, $taskSuccessHandle)
+    protected function createCommonLog()
     {
         $successCommonLog = self::getSuccessCommonLog();
         $errorCommonLog = self::getErrorCommonLog();
@@ -74,59 +84,62 @@ class TaskProcessing extends Task
         $handleSuccess = fopen($successCommonLog, 'a+');
         $handleError = fopen($errorCommonLog, 'a+');
 
-        $this->createSuccessCommonLog($handleSuccess, $taskSuccessHandle);
+        $this->createSuccessCommonLog($handleSuccess);
         fclose($handleSuccess);
-        $this->deleteTaskLogFile($taskSuccessHandle, TaskProcessing::getTaskSuccessLog( $this->taskID ));
+        $this->deleteTaskLogFile(TaskProcessing::getTaskSuccessLog( $this->taskID ));
 
 
-        $this->createErrorCommonLog($handleError, $taskErrorHandle);
+        $this->createErrorCommonLog($handleError);
         fclose($handleError);
-        $this->deleteTaskLogFile($taskErrorHandle, TaskProcessing::getTaskErrorLog( $this->taskID ));
+        $this->deleteTaskLogFile(TaskProcessing::getTaskErrorLog( $this->taskID ));
     }
 
     /**
      * @param resource $handleSuccess
-     * @param resource $taskSuccessHandle
      */
-    protected function createSuccessCommonLog($handleSuccess, $taskSuccessHandle)
+    protected function createSuccessCommonLog($handleSuccess)
     {
-        fwrite($handleSuccess,"[TASK_$this->taskID]");
-        fwrite($handleSuccess, $this->getTaskSuccessContent($taskSuccessHandle)  );
-        fwrite($handleSuccess,"[/TASK_$this->taskID]");
+        $file_name = self::getTaskSuccessLog($this->taskID);
+        $content = $this->getTaskLogContent($file_name);
+        if( false === $content) return false;
+
+        fwrite($handleSuccess,"[TASK_$this->taskID]\n");
+        fwrite($handleSuccess,  $content );
+        fwrite($handleSuccess,"[/TASK_$this->taskID]\n");
     }
 
     /**
      * @todo refactor {createSuccessCommonLog(), createErrorCommonLog()} to one method
      * @param resource $handleError
-     * @param resource $taskErrorHandle
      */
-    protected function createErrorCommonLog($handleError, $taskErrorHandle)
+    protected function createErrorCommonLog($handleError)
     {
-        fwrite($handleError,"[TASK_$this->taskID]");
-        fwrite($handleError, $this->getTaskSuccessContent($taskErrorHandle)  );
-        fwrite($handleError,"[/TASK_$this->taskID]");
+        $file_name = self::getTaskErrorLog($this->taskID);
+        $content = $this->getTaskLogContent($file_name);
+        if( false === $content) return false;
+
+        fwrite($handleError,"[TASK_$this->taskID]\n");
+        fwrite($handleError,  $content );
+        fwrite($handleError,"[/TASK_$this->taskID]\n");
     }
 
     /**
-     * @param resource $taskErrorHandle
+     * @param string $filename
      * @return bool|string
      */
-    protected function getTaskErrorContent($taskErrorHandle)
+    protected function getTaskLogContent($filename)
     {
-        return fread($taskErrorHandle, filesize(self::getTaskSuccessLog($this->taskID)));
+        $file_handler = fopen($filename, 'r');
+        $filesize = filesize($filename);
+
+        if($filesize === 0) return false;
+        return fread($file_handler, $filesize);
     }
 
-    /**
-     * @param resource $taskSuccessHandle
-     * @return bool|string
-     */
-    protected function getTaskSuccessContent($taskSuccessHandle)
+    protected function onAfterProcessing()
     {
-        return fread($taskSuccessHandle, filesize(self::getTaskSuccessLog($this->taskID)));
-    }
+        $this->createCommonLog();
 
-    protected function onAfterProcessing($taskID)
-    {
         $model = new TaskPull();
         if( $this->has_error )
         {
@@ -183,15 +196,14 @@ class TaskProcessing extends Task
     /**
      * @param resource $handle
      */
-    protected function deleteTaskLogFile($handle, $filePath)
+    protected function deleteTaskLogFile($filePath)
     {
-        fclose($handle);
         unlink( $filePath );
     }
 
     protected function isFilename()
     {
-        if( !is_null($this->is_filename) )
+        if( !is_null($this->filename) )
         {
             $this->filename = substr( $this->filename, 1 );
             $this->filename = substr( $this->filename, 0, -1 );
@@ -257,7 +269,7 @@ class TaskProcessing extends Task
      */
     private function checkFilename(string $filename)
     {
-        if( !$this->is_filename ) return false;
+        if( !$this->is_filename ) return true;
         $storage_mask = $this->getFilename();
 
         if( $this->is_partial )

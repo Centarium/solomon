@@ -1,6 +1,6 @@
 <?php
 namespace Bundles;
-include_once __DIR__.'../bundles/Config.php';
+include_once __DIR__.'/../bundles/Config.php';
 
 class TestDirectory
 {

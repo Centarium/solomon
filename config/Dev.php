@@ -10,14 +10,15 @@ Class Dev implements ConfigInterface
     {
         return [
             'db' => [
-                'dbtype' => 'postgres',
+                'dbtype' => 'pgsql',
                 'host' => 'localhost',
                 'dbname' => 'postgres',
                 'user' => 'root',
                 'pass' => 'admin'
             ],
             'task' => [
-                'total_proc' => 6
+                'total_proc' => 6,
+                'delay' => 10
             ],
             'testStorage' => 'test',
             'log' => [

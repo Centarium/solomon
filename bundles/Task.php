@@ -19,7 +19,7 @@ class Task
     const EXTENSION_PARAM = '--extension';
 
     const NEW_STATUS = 'new';
-    const IN_PROGRESS_STATUS = 'progress';
+    const IN_PROGRESS_STATUS = 'in_progress';
     const IN_SUCCESS_STATUS = 'success';
     const IN_ERROR_STATUS = 'error';
 

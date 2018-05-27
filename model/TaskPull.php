@@ -90,9 +90,7 @@ class TaskPull
         $host = Config::get('db:host');
         $dbname = Config::get('db:dbname');
 
-        return new PDO("$dbType:host=$host;dbname=$dbname", $user, $pass,
-            [PDO::ATTR_PERSISTENT => true]
-        );
+        return new PDO("$dbType:host=$host;dbname=$dbname", $user, $pass);
     }
 
     /**
@@ -138,10 +136,16 @@ class TaskPull
         $params = [];
         $params[] = Task::PATH_PARAM;
         $params[] = $data['path'];
-        $params[] = Task::EXTENSION_PARAM;
-        $params[] = $data['file_extension'];
-        $params[] = Task::FILE_PARAM;
-        $params[] = $data['file_name'];
+        if(!is_null($data['file_extension']))
+        {
+            $params[] = Task::EXTENSION_PARAM;
+            $params[] = $data['file_extension'];
+        }
+        if(!is_null($data['file_name']))
+        {
+            $params[] = Task::FILE_PARAM;
+            $params[] = $data['file_name'];
+        }
 
         return $params;
     }
@@ -149,7 +153,7 @@ class TaskPull
     public function updateTaskStatus($taskID, $newStatus)
     {
         $query = $this->conn->prepare(
-            "UPDATE task_pull SET status = :new_status WHERE task_id =: task_id"
+            "UPDATE task_pull SET status = :new_status WHERE task_id = :task_id"
         );
         $query->bindParam(':task_id', $taskID);
         $query->bindParam(':new_status', $newStatus);

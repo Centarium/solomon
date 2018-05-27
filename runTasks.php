@@ -15,19 +15,20 @@ if(!$data)
     exit();
 }
 
+$taskID = $data['task_id'];
 $data = $taskPull->convertStorageData($data);
-$task = new TaskProcessing( $data );
+$task = new TaskProcessing($taskID, $data );
 
-echo "Start task ".$data['task_id'];
+echo "Start task ".$taskID."\n";
 
 //Создаем fork процесса чтобы открепить от консоли
 $pid = pcntl_fork();
-if($pid ==0)
+if($pid !=0)
 {
     exit();
 }
 
-$task->taskProcessing( $data['task_id'] );
+$task->taskProcessing();
 
 
 

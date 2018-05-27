@@ -1,7 +1,9 @@
 <?php
 include_once __DIR__.'/bundles/TaskProcessing.php';
+include_once __DIR__.'/bundles/Config.php';
 use \Bundles\TaskProcessing;
-//sleep(10);
+use \Bundles\Config;
+sleep(Config::get('task:delay'));
 
 $index = array_search(TaskProcessing::DELETE_FILE_COMMAND, $argv);
 $taskID_index = array_search(TaskProcessing::TASK_ID_KEY, $argv);
